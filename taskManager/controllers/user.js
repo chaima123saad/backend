@@ -4,20 +4,26 @@ const bcrypt = require('bcryptjs');
 const multer = require('multer');
 const upload = multer();
 const fs = require('fs');
+const path= require('path');
+const Team = require('../models/user');
 
 exports.createUser = async (req, res) => {
   try {
-    
-    const { name,lastName,email,role,specialite,profileImage }= req.body;
-    const password =User.generatePassword();
-    const newUser = new User({ name,lastName,email,role,specialite,profileImage , password});
+    const { name, lastName, email, role, specialite, team, profileImage, tasks } = req.body;
+    const password = User.generatePassword();
+
+    const newUser = new User({ name, lastName, email, role, specialite, team, profileImage, tasks, password });
     await newUser.save();
-    await sendWelcomeEmail ( email, name, password );
-    newUser.password = await bcrypt.hash( password, 8);
+
+    await Team.updateOne({ _id: team }, { $push: { members: newUser._id } });
+
+    await sendWelcomeEmail(email, name, password);
+
+    newUser.password = await bcrypt.hash(password, 8);
     await newUser.save();
-    const token= newUser.generateAuthToken();
+
+    const token = newUser.generateAuthToken();
     res.status(201).json({ user: newUser, token });
-    
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -73,34 +79,49 @@ exports.deleteUserById = async (req, res) => {
 
 exports.updateProfileImage = async (req, res) => {
   try {
-    const user = await User.findByIdAndUpdate(req.params.id, { profileImage: req.file.buffer }, { new: true });
+    const userId = req.params.id;
+    const user = await User.findById(userId);
+
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
-    res.json({ message: 'Profile image updated successfully' });
+
+    const oldProfileImagePath = user.profileImage;
+    if (oldProfileImagePath !== "public/images/default-avatar.jpg") {
+      fs.unlinkSync(path.join(__dirname, '..', '', oldProfileImagePath));
+    }
+    
+    user.profileImage = req.file.path.replace("public/", "");
+    await user.save();
+    res.status(200).json({ message: "Profile image updated successfully" });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Server error' });
-  }
-}
-
-exports.deleteProfileImage = async (req, res) => {
-  try {
-    const user = await User.findById(req.user._id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    if (user.profileImage) {
-
-      fs.unlinkSync(user.profileImage.path);
-      user.profileImage = undefined;
-      await user.save();
-    }
-
-    res.status(200).json({ message: 'Profile image deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ error: 'Server error' });
+    console.log(error);
+    res.status(500).json({ message: "Failed to update profile image" });
   }
 };
 
+
+exports.deleteProfileImage = async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const profileImagePath = user.profileImage;
+    if (!profileImagePath || profileImagePath === 'public/images/default-avatar.jpg') {
+      return res.status(400).json({ message: "Cannot delete default profile image" });
+    }
+
+    fs.unlinkSync(path.join(__dirname, '..', '', profileImagePath));
+    user.profileImage = 'public/images/default-avatar.jpg';
+    await user.save();
+
+    res.status(200).json({ message: "Profile image deleted successfully" });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Failed to delete profile image" });
+  }
+}

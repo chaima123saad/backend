@@ -23,6 +23,11 @@ const userSchema = new mongoose.Schema({
   specialite: {
     type: String,
   },
+  team:{
+    type: mongoose.Schema.Types.ObjectId,
+    required: true,
+    ref: 'Team'
+  },
   
 tokens: [{
       token: {
@@ -40,9 +45,18 @@ resetToken:{
 resetTokenExpiration:{
       type: String
     }
-,profileImage: {
-       type: Buffer
-     }
+,
+profileImage: {
+  type: String,
+  default: 'public/images/default-avatar.jpg'
+},
+tasks:[{
+  type: mongoose.Schema.Types.ObjectId,
+  required: true,
+  ref: 'Task',
+  default:null
+}]
+
 }, 
 {
 timestamps: true
@@ -83,7 +97,13 @@ const User = mongoose.model('User', userSchema);
 module.exports = User;
 
 
-
+userSchema.pre('save', async function(next) {
+  
+      team.members.push(this._id);
+      await team.save();
+ 
+  next();
+});
 
 
 

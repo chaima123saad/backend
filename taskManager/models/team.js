@@ -8,12 +8,10 @@ const teamSchema = new mongoose.Schema({
   },
   members: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    deafaul:null
+    ref: 'User'
   }],
   owner: {
     type: mongoose.Schema.Types.ObjectId,
-    required: true,
     ref: 'User'
   },
   projects: [{
@@ -26,11 +24,11 @@ const teamSchema = new mongoose.Schema({
 });
 
 // Remove sensitive data from team object before sending as JSON
-teamSchema.methods.toJSON = function() {
-  const team = this.toObject();
-  delete team.owner;
-  return team;
-};
+// teamSchema.methods.toJSON = function() {
+//   const team = this.toObject();
+//   delete team.owner;
+//   return team;
+// };
 
 
 const Team = mongoose.model('Team', teamSchema);

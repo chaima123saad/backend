@@ -2,9 +2,9 @@ const Project = require('../models/project');
 const Task = require('../models/task');
 
 exports.createProject = async (req, res) => {
-  const { name,description,team,clientName,budge,tasks } = req.body;
+  const { name,description,team,status,clientName,budge,tasks } = req.body;
   try {
-    const project = await Project.create({ name,description,team,clientName,budge,tasks});
+    const project = await Project.create({ name,description,team,status,clientName,budge,tasks});
     res.status(201).json({ project });
   } catch (error) {
     res.status(500).json({ error: 'Server error final :(' });
@@ -13,7 +13,7 @@ exports.createProject = async (req, res) => {
 
 exports.getProjects = async (req, res) => {
   try {
-    const projects = await Project.find();
+    const projects = await Project.find({ status: 'inProgress' });
     res.json({ projects });
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
@@ -29,26 +29,13 @@ exports.getCompletedProjects = async (req, res) => {
   }
 };
 
-exports.getCompletedProjectsByTeam = async (req, res) => {
+exports.getCompletedProjectsByUsers = async (req, res) => {
   try {
-    const teamId = req.params.teamId;
-    const projects = await Project.find({ team: teamId, status: 'completed' });
+    const userId = req.params.userId;
+    const projects = await Project.find({ user: userId, status: 'completed' });
     res.send(projects);
   } catch (error) {
     res.status(500).send(error);
-  }
-};
-
-exports.getProjectById = async (req, res) => {
-  const { projectId } = req.params;
-  try {
-    const project = await Project.findById(projectId);
-    if (!project) {
-      return res.status(404).json({ error: 'Project not found' });
-    }
-    res.json({ project });
-  } catch (error) {
-    res.status(500).json({ error: 'Server error' });
   }
 };
 
@@ -112,9 +99,6 @@ exports.filterProjects = async (req, res) => {
       res.status(500).json({ error: 'Server error' });
     }
   };
-  
-
-
 
 exports.searchProjects = async (req, res) => {
     const searchTerm = req.query.q;
@@ -132,14 +116,4 @@ exports.searchProjects = async (req, res) => {
     }
   };
 
-exports.getUsersByProject = async (req, res) => {
-  try {
-    const projectId = req.params.projectId;
-    const project = await Project.findById(projectId);
-    const users = project.users;
-    res.send(users);
-  } catch (error) {
-    res.status(500).send(error);
-  }
-};
 

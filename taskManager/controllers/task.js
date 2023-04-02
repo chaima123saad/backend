@@ -1,11 +1,14 @@
 const Task = require('../models/task');
 const Project = require('../models/project');
+
+//will be deleted in the futur 
 exports.createTask = async (req, res) => {
   try {
 
     const { name, status ,priority  ,project ,users } = req.body;
     const newTask = new Task({ name, status ,priority  ,project ,users });
     await newTask.save();
+  
     res.status(201).json(newTask);
 
   } catch (error) {
@@ -13,29 +16,43 @@ exports.createTask = async (req, res) => {
   }
 };
 
-exports.statueProjectUpdate = async (req, res) => {
+exports.completeTask = async (req, res) => {
   try {
-   
-    const task = await Task.findByIdAndUpdate(req.params, { status: 'completed' }, { new: true });  
+    const taskId = req.params.id;
+    const task = await Task.findById(taskId);
 
-    const projectTasks = await Task.find({ projectId: task.project });
-    
-    const allTasksCompleted = projectTasks.every(projectTask => projectTask.status === 'completed');
-    const completedTasks = projectTasks.filter(projectTask => projectTask.status === 'completed');
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+//add condition :how the status be completed
+
+    task.status = 'completed';
+    await task.save();
+
+    const project = await Project.findById(task.project);
+
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
+    const allTasksCompleted = project.tasks.every(task => task.status === 'completed');
 
     if (allTasksCompleted) {
-      await Project.findByIdAndUpdate(task.project, { status: 'completed' }, { new: true });
-    }
-    else if(completedTasks.length >=1 && !allTasksCompleted) { 
-      await Project.findByIdAndUpdate(task.project, { status: 'inProgress' }, { new: true })
-    }
-    else {
-      await Project.findByIdAndUpdate(task.project, { status: 'toDo' }, { new: true })
+      project.status = 'completed';
+      await project.save();
     }
 
-    res.status(200).json(task);
+    const completedTasks = await Task.countDocuments({ projectId: project.projectId, status: "completed" });
+    if (completedTasks === 1 && !allTasksCompleted) {
+      project.status = "inProgress";
+      await project.save();
+    }
+
+    res.status(200).json({ message: 'Task completed successfully' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: 'Failed to complete task' });
   }
 };
 
@@ -50,32 +67,6 @@ exports.getAllTasks = async (req, res) => {
   }
 };
 
-
-exports.getCompletedTasksByUserAndProject = async (req, res) => {
-  try {
-    const userId = req.params.userId;
-    const projectId = req.params.projectId;
-    const tasks = await Task.find({ user: userId, project: projectId, status: 'completed' });
-    res.send(tasks);
-  } catch (error) {
-    res.status(500).send(error);
-  }
-};
-
-// Controller function to retrieve a single task by ID
-exports.getTaskById = async (req, res) => {
-  try {
-    const task = await Task.findById(req.params.id);
-    if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
-    }
-    res.json(task);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// Controller function to update a task by ID
 exports.updateTaskById = async (req, res) => {
   try {
     const { title, description, status } = req.body;
@@ -89,7 +80,6 @@ exports.updateTaskById = async (req, res) => {
   }
 };
 
-// Controller function to delete a task by ID
 exports.deleteTaskById = async (req, res) => {
   try {
     const deletedTask = await Task.findByIdAndDelete(req.params.id);

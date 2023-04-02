@@ -8,7 +8,7 @@ router.put('/:id', projectController.updateProject);
 router.delete('/:id', projectController.deleteProject);
 router.get('/filter', projectController.filterProjects);
 router.get('/projects/completed', projectController.getCompletedProjects);
-router.get('/teams/:teamId/projects/completed',projectController.getCompletedProjectsByTeam);
+router.get('/teams/:userId/projects/completed',projectController.getCompletedProjectsByUsers);
 
 router.get('/:id',projectController.getMembers);
 
