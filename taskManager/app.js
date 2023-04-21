@@ -9,11 +9,16 @@ const server = http.createServer(app);
 const socketio = require('socket.io');
 const io = socketio(server);
 const Chat = require('./models/chat');
-
+const User = require('./models/user');
 
 dotenv.config({ path: './config.env' });
 
-app.use(cors());
+app.use(cors({
+  origin: "http://localhost:3000",
+  methods: "GET,POST,PUT,DELETE",
+  credentials: true,
+}));
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
@@ -23,6 +28,16 @@ const uri = process.env.MONGODB_URI;
 mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log('Database connection successful'))
   .catch(err => console.error('Database connection error:', err));
+
+app.use(function(req, res, next) {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
+  res.setHeader('Access-Control-Allow-Credentials', true);
+
+  next();
+});
 
 
 io.on('connection', (socket) => {
@@ -57,12 +72,12 @@ app.post('/chat', async (req, res) => {
   res.sendStatus(200);
 });
 
-
 const userRoutes = require('./routes/user');
 const teamRoutes =require('./routes/team');
 const projectRoutes= require('./routes/project');
 const taskRoutes= require('./routes/task');
 const statisticRoutes =require('./routes/statistic');
+//const chatGpt=require('./routes/chatt');
 const login=require('./routes/login');
 
 app.use('/users',userRoutes);
@@ -71,7 +86,7 @@ app.use('/projects',projectRoutes);
 app.use('/tasks',taskRoutes);
 app.use('/statistics',statisticRoutes);
 app.use('/login',login);
-
+//app.use('/chatGpt',chatGpt);
 const port = 2000;
 app.listen(port, () => {
   console.log(`Server started on port ${port}`);

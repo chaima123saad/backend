@@ -4,8 +4,9 @@ const Task = require('../models/task');
 exports.createProject = async (req, res) => {
   const { name,description,team,status,clientName,budge,tasks } = req.body;
   try {
-    const project = await Project.create({ name,description,team,status,clientName,budge,tasks});
-    res.status(201).json({ project });
+    const newProject = new Project({ name,description,team,status,clientName,budge,tasks });
+    await newProject.save();
+    res.status(201).json({ newProject });
   } catch (error) {
     res.status(500).json({ error: 'Server error final :(' });
   }
@@ -14,7 +15,7 @@ exports.createProject = async (req, res) => {
 exports.getProjects = async (req, res) => {
   try {
     const projects = await Project.find({ status: 'inProgress' });
-    res.json({ projects });
+    res.json(projects);
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }
@@ -53,16 +54,12 @@ exports.updateProject = async (req, res) => {
 };
 
 exports.deleteProject = async (req, res) => {
-  const { projectId } = req.params;
   try {
-    const project = await Project.findById(projectId);
-    if (!project) {
-      return res.status(404).json({ error: 'Project not found' });
-    }
-    await project.remove();
-    res.json({ message: 'Project deleted' });
+    const project =await Project.findById(req.params.id);
+    await Project.findByIdAndRemove(project);
+    res.status(200).json({ message: 'Project deleted' });
   } catch (error) {
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ message: error.message });
   }
 };
 

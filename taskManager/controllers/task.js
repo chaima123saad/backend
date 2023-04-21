@@ -58,14 +58,34 @@ exports.completeTask = async (req, res) => {
 
 
 
-exports.getAllTasks = async (req, res) => {
+exports.getTodoTasks = async (req, res) => {
+  const userId = req.params.userId;
   try {
-    const tasks = await Task.find();
+    const tasks = await Task.find({ userId: userId, status: 'toDo' });
     res.json(tasks);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
+exports.getInProgressTasks = async (req, res) => {
+  try {
+    const tasks = await Task.find({ userId: req.user.id, status: 'inprogress' });
+    res.json(tasks);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getDoneTasks = async (req, res) => {
+  try {
+    const tasks = await Task.find({ userId: req.user.id, status: 'done' });
+    res.json(tasks);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 
 exports.updateTaskById = async (req, res) => {
   try {

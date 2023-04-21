@@ -8,20 +8,27 @@ const jwt = require('jsonwebtoken');
 
 
 router.post('/', async (req, res) => {
-    try {
-      const user = await User.findByCredentials(req.body.email ,req.body.password);
-  
-      if (!user) {
-        return res.status(400).json({ msg: 'Invalid email or password' });
-      }
-        const token = jwt.sign({ _id: user._id.toString() }, process.env.JWT_SECRET);
-       res.json({token,user});
+  try {
+    const user = await User.findByCredentials(req.body.email ,req.body.password);
     
-      } catch (err) {
-      console.error(err);
-      res.status(500).json({ msg: 'Server error' });
+    if (!user) {
+      return res.status(400).json({ msg: 'Invalid email' });
     }
-  });
+    
+    const isMatch = await bcrypt.compare(req.body.password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ msg: 'Invalid password' });
+    }
+    
+    const token = jwt.sign({ _id: user._id.toString() }, process.env.JWT_SECRET);
+    res.json({ token, user });
+  
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: 'Server error in the back' });
+  }
+});
+
   
    router.get('/profile', auth, (req, res) => {
      res.json(req.user);

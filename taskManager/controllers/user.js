@@ -6,23 +6,18 @@ const upload = multer();
 const fs = require('fs');
 const path= require('path');
 const Team = require('../models/user');
+const cloudinary = require('cloudinary').v2;
 
 exports.createUser = async (req, res) => {
   try {
-    const { name, lastName, email, role, specialite, team, profileImage, tasks } = req.body;
+    const { email,name, lastName,adress ,numero,genre,team,role, profileImage, tasks } = req.body;
     const password = User.generatePassword();
-
-    const newUser = new User({ name, lastName, email, role, specialite, team, profileImage, tasks, password });
-    await newUser.save();
-
-    await Team.updateOne({ _id: team }, { $push: { members: newUser._id } });
-
-    await sendWelcomeEmail(email, name, password);
-
+    const newUser = new User({ email,name, lastName,adress ,numero,genre,team, role, profileImage, tasks, password });
+    sendWelcomeEmail(email, name, password);
     newUser.password = await bcrypt.hash(password, 8);
+    // const token = newUser.generateAuthToken();
+    const token = jwt.sign({ userId: newUser._id }, process.env.JWT_SECRET);
     await newUser.save();
-
-    const token = newUser.generateAuthToken();
     res.status(201).json({ user: newUser, token });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -31,6 +26,7 @@ exports.createUser = async (req, res) => {
 
 exports.getAllUsers = async (req, res) => {
   try {
+ 
     const users = await User.find();
     res.json(users);
   } catch (error) {
@@ -64,18 +60,21 @@ exports.updateUserById = async (req, res) => {
   }
 };
 
-exports.deleteUserById = async (req, res) => {
+exports.deleteUser = async (req, res) => {
   try {
-    const deletedUser = await User.findByIdAndDelete(req.params.id);
-    if (!deletedUser) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-    res.json({ message: 'User deleted successfully' });
+    const user =await User.findById(req.params.id);
+    await User.findByIdAndRemove(user);
+    res.status(200).json({ message: 'User deleted', user });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+cloudinary.config({
+  cloud_name: "dvw7882vz",
+  api_key: "482828472586643",
+  api_secret: "2Uh5CMgQI2doIyBWDTCs41XnqmA"
+});
 
 exports.updateProfileImage = async (req, res) => {
   try {
@@ -85,24 +84,23 @@ exports.updateProfileImage = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-
-    const oldProfileImagePath = user.profileImage;
-    if (oldProfileImagePath !== "public/images/default-avatar.jpg") {
-      fs.unlinkSync(path.join(__dirname, '..', '', oldProfileImagePath));
+    if (user.profileImage && !user.profileImage.includes("https://res.cloudinary.com/dvw7882vz/image/upload/v1681564075/user_avatar_2.jpg")) {
+      const public_id = 'user_avatar_2';
+      const result = await cloudinary.uploader.destroy(public_id);
     }
-    
-    user.profileImage = req.file.path.replace("public/", "");
+    const result = await cloudinary.uploader.upload(req.file.path);
+    user.profileImage = result.secure_url;
     await user.save();
-    res.status(200).json({ message: "Profile image updated successfully" });
+    res.status(200).json({ message: "Profile image updated successfully", user });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Failed to update profile image" });
   }
 };
 
-
 exports.deleteProfileImage = async (req, res) => {
   try {
+  
     const userId = req.params.id;
     const user = await User.findById(userId);
 
@@ -110,13 +108,15 @@ exports.deleteProfileImage = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const profileImagePath = user.profileImage;
-    if (!profileImagePath || profileImagePath === 'public/images/default-avatar.jpg') {
+    const profileImageUrl = user.profileImage;
+    if (profileImageUrl && !profileImageUrl.includes("https://res.cloudinary.com/dvw7882vz/image/upload/v1681564075/user_avatar_2.jpg")) {
       return res.status(400).json({ message: "Cannot delete default profile image" });
     }
 
-    fs.unlinkSync(path.join(__dirname, '..', '', profileImagePath));
-    user.profileImage = 'public/images/default-avatar.jpg';
+    const publicId = 'user_avatar_2';
+    await cloudinary.uploader.destroy(publicId);
+
+    user.profileImage = 'https://res.cloudinary.com/dvw7882vz/image/upload/v1681564075/user_avatar_2.jpg';
     await user.save();
 
     res.status(200).json({ message: "Profile image deleted successfully" });

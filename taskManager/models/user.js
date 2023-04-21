@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const Task = require('./task');
 const bcrypt = require('bcryptjs');
+const passportLocalMongoose = require('passport-local-mongoose');
 
 const userSchema = new mongoose.Schema({
   name: {
@@ -20,13 +21,23 @@ const userSchema = new mongoose.Schema({
     required: true,
     enum: ['owner', 'manager', 'employee']
   },
-  specialite: {
-    type: String,
-  },
+ 
   team:{
     type: mongoose.Schema.Types.ObjectId,
-    required: true,
     ref: 'Team'
+  },
+  genre:{
+    type: String,
+    required: true,
+    enum: ['Homme', 'Femme', 'Autre']
+  },
+  adress:{
+    type: String,
+    required: true,
+  },
+  numero:{
+    type: String,
+    required: true,
   },
   
 tokens: [{
@@ -48,7 +59,7 @@ resetTokenExpiration:{
 ,
 profileImage: {
   type: String,
-  default: 'public/images/default-avatar.jpg'
+  default: 'https://res.cloudinary.com/dvw7882vz/image/upload/v1681564075/user_avatar_2.jpg'
 },
 tasks:[{
   type: mongoose.Schema.Types.ObjectId,
@@ -62,6 +73,40 @@ tasks:[{
 timestamps: true
 
 });
+userSchema.plugin(passportLocalMongoose);
+
+userSchema.pre('remove', async function(next) {
+  try {
+    
+    const team = await mongoose.model('Team').findOne({ members: this._id });
+    if (team) {
+      team.members.pull(this._id);
+      await team.save();
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+userSchema.pre('save', async function(next) {
+  try {
+    if (this.team) {
+      const team = await mongoose.model('Team').findById(this.team);
+      if (team) {
+        const isMember = team.members.includes(this._id);
+        if (!isMember) {
+          team.members.push(this._id);
+          await team.save();
+        }
+      }
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
 
 userSchema.statics.generatePassword = function () {
   const password = Math.random().toString(36).slice(-8);
@@ -71,16 +116,16 @@ userSchema.statics.generatePassword = function () {
 userSchema.methods.generateAuthToken = async function() {
   const token = jwt.sign({ _id: this._id.toString() }, process.env.JWT_SECRET);
   this.tokens = this.tokens.concat({ token });
-  await this.save();
   return token;
 };
 
 userSchema.statics.findByCredentials = async (email, password) => {
   const user = await User.findOne({ email });
+
   if (!user) {
-    throw new Error('Unable to login');
+    throw new Error('User not found');
   }
-  const isMatch = await bcrypt.compare(password, user.password);
+  const isMatch = bcrypt.compare(password, user.password);
   if (!isMatch) {
     throw new Error('Unable to login');
   }
@@ -92,19 +137,20 @@ userSchema.methods.toJSON = function() {
   return user;
 };
 
+userSchema.methods.isValidPassword = async function (password) {
+  try {
+    return await bcrypt.compare(password, this.password);
+  } catch (error) {
+    throw error;
+  }
+};
+
+
+module.exports = mongoose.model('User', userSchema);
+
 
 const User = mongoose.model('User', userSchema);
 module.exports = User;
-
-
-userSchema.pre('save', async function(next) {
-  
-      team.members.push(this._id);
-      await team.save();
- 
-  next();
-});
-
 
 
 

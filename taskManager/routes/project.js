@@ -5,7 +5,7 @@ const projectController = require('../controllers/project');
 router.get('/', projectController.getProjects);
 router.post('/addProject', projectController.createProject);
 router.put('/:id', projectController.updateProject);
-router.delete('/:id', projectController.deleteProject);
+router.delete('/deleteProject/:id', projectController.deleteProject);
 router.get('/filter', projectController.filterProjects);
 router.get('/projects/completed', projectController.getCompletedProjects);
 router.get('/teams/:userId/projects/completed',projectController.getCompletedProjectsByUsers);
