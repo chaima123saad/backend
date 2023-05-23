@@ -11,14 +11,15 @@ const taskSchema = new mongoose.Schema({
     enum: ['completed', 'inProgress', 'toDo']
     },
 
-    priority: {
-      type: Number,
-      required: true
-    },
-    // sousTache: [{
-    //     type: mongoose.Schema.Types.ObjectId,
-    //     ref: 'sousTache'
-    //   }],
+    priority:{
+      type: String,
+      enum: ['low', 'high', 'medium']
+      },
+      
+    subTask: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'subTask'
+     }],
 
     project: {
       type: mongoose.Schema.Types.ObjectId,
@@ -33,6 +34,38 @@ const taskSchema = new mongoose.Schema({
 
   }, {
   timestamps: true // Adds createdAt and updatedAt fields to the schema
+  });
+
+  taskSchema.pre('remove', async function(next) {
+    try {
+      
+      const users = await mongoose.model('User').findOne({ tasks: this._id });
+      if (users) {
+        users.tasks.pull(this._id);
+        await users.save();
+      }
+      next();
+    } catch (error) {
+      next(error);
+    }
+  });
+  
+  taskSchema.pre('save', async function(next) {
+    try {
+      if (this.users) {
+        const users = await mongoose.model('User').findById(this.users);
+        if (users) {
+          const isTask = users.tasks.includes(this._id);
+          if (!isTask) {
+            users.tasks.push(this._id);
+            await users.save();
+          }
+        }
+      }
+      next();
+    } catch (error) {
+      next(error);
+    }
   });
 
 

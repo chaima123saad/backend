@@ -16,14 +16,21 @@ const projectSchema = new mongoose.Schema({
     required: false,
     ref:'Team'
   },
-  status:{
+  status: {
     type: String,
-    enum: ['completed', 'inProgress', 'toDo']
-    },
+    enum: ['completed', 'inProgress', 'toDo'],
+    default: 'toDo'
+  },
+  
+    priority:{
+      type: String,
+      enum: ['low', 'high', 'medium']
+      },
   clientName: {
       type: String,
       required: false
     },
+  
   budge: {
       type: String,
       required: false

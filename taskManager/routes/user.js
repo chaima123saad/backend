@@ -32,13 +32,14 @@ const upload = multer({
     }
 })
 
-router.put('/:id', userController.updateProfileImage); 
+router.put('/updateImage/:id', userController.updateProfileImage); 
 router.delete('/:id',userController.deleteProfileImage); 
 
 router.get('/',userController.getAllUsers);
 router.get('/:id',userController.getUserById);
 router.post('/addUser',upload.none(),userController.createUser);
-//router.put('/:id',userController.updateUserById);
+router.put('/updateUser/:id',userController.updateUserById);
 router.delete('/deleteUser/:id',userController.deleteUser);
 
 module.exports = router;
+ 

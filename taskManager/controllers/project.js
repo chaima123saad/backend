@@ -2,9 +2,9 @@ const Project = require('../models/project');
 const Task = require('../models/task');
 
 exports.createProject = async (req, res) => {
-  const { name,description,team,status,clientName,budge,tasks } = req.body;
+  const { name,description,team,status,priority,clientName,budge,tasks } = req.body;
   try {
-    const newProject = new Project({ name,description,team,status,clientName,budge,tasks });
+    const newProject = new Project({ name,description,team,status,priority,clientName,budge,tasks });
     await newProject.save();
     res.status(201).json({ newProject });
   } catch (error) {
@@ -14,7 +14,7 @@ exports.createProject = async (req, res) => {
 
 exports.getProjects = async (req, res) => {
   try {
-    const projects = await Project.find({ status: 'inProgress' });
+    const projects = await Project.find();
     res.json(projects);
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
@@ -29,6 +29,26 @@ exports.getCompletedProjects = async (req, res) => {
     res.status(500).send(error);
   }
 };
+
+exports.getTaskNumber= async (req, res, next) => {
+  const { projectId } = req.params;
+  try {
+    const taskCount = await Task.countDocuments({ project: projectId });
+    res.json({ count: taskCount });
+  } catch (error) {
+    next(error);
+  }
+}
+
+exports.getProjectTask= async (req, res) => {
+  try {
+    const tasks = await Task.find({ project: req.params.projectId });
+    res.json(tasks);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+}
 
 exports.getCompletedProjectsByUsers = async (req, res) => {
   try {
@@ -113,4 +133,14 @@ exports.searchProjects = async (req, res) => {
     }
   };
 
-
+  exports.getProjectById = async (req, res) => {
+    try {
+      const project = await Project.findById(req.params.id);
+      if (!project) {
+        return res.status(404).json({ message: 'Project not found' });
+      }
+      res.json(project);
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  };

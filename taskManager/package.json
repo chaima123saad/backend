@@ -11,7 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "@tensorflow/tfjs": "^4.2.0",
-    "axios": "^1.3.4",
+    "axios": "^1.3.6",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^1.36.1",
     "connect-ensure-login": "^0.1.1",

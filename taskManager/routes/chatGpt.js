@@ -1,34 +1,50 @@
-// const express = require('express');
-// const router = express.Router();
-// const dotenv = require('dotenv');
-// const axios = require('axios');
-// dotenv.config({ path: './config.env' });
+const express = require('express');
+const router = express.Router();
+const { Configuration, OpenAIApi } = require('openai');
 
-// router.post('/', async (req, res) => {
-//     const { message } = req.body;
-  
-//     try {
-//       const response = await axios.post('https://api.openai.com/v1/engines/davinci/completions', {
-//         prompt: `User: ${message}\nBot:`,
-//         max_tokens: 50,
-//         temperature: 0.5,
-//         n: 1,
-//         stop: '\n',
-//       }, {
-//         headers: {
-//           'Content-Type': 'application/json',
-//           'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-//         },
-//       });
-  
-//       const { choices } = response.data;
-//       const chatbotResponse = choices[0].text.trim();
-  
-//       res.json({ message: chatbotResponse });
-//     } catch (error) {
-//       console.log(error);
-//       res.status(500).json({ message: 'Internal server error' });
-//     }
-//   });
-  
-//   module.exports = router;
+router.get('/task-list', async (req, res) => {
+  const configuration = new Configuration({
+    apiKey: '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',
+  });
+  const openai = new OpenAIApi(configuration);
+
+  try {
+    const completion = await openai.createChatCompletion({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a user requesting a task list.',
+        },
+        {
+          role: 'user',
+          content: 'give me a task list of create logo project',
+        },
+      ],
+    });
+
+    if (
+      completion &&
+      completion.data.choices &&
+      completion.data.choices.length > 0
+    ) {
+      const message = completion.data.choices[0].message.content;
+
+      res.json({ listItems: message }); 
+    } else {
+      res.status(500).json({ error: 'No completion data found.' });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'An error occurred.' });
+  }
+});
+
+module.exports = router;
+
+
+ 
+
+
+
+

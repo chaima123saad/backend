@@ -2,8 +2,6 @@ const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const Task = require('./task');
 const bcrypt = require('bcryptjs');
-const passportLocalMongoose = require('passport-local-mongoose');
-
 const userSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -21,7 +19,9 @@ const userSchema = new mongoose.Schema({
     required: true,
     enum: ['owner', 'manager', 'employee']
   },
- 
+  speciality:{
+    type: String
+  },
   team:{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Team'
@@ -39,6 +39,8 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  birthDate: {
+    type: Date  },
   
 tokens: [{
       token: {
@@ -71,9 +73,7 @@ tasks:[{
 }, 
 {
 timestamps: true
-
 });
-userSchema.plugin(passportLocalMongoose);
 
 userSchema.pre('remove', async function(next) {
   try {

@@ -1,12 +1,13 @@
 const Task = require('../models/task');
 const Project = require('../models/project');
+const User = require('../models/user');
 
 //will be deleted in the futur 
 exports.createTask = async (req, res) => {
   try {
 
-    const { name, status ,priority  ,project ,users } = req.body;
-    const newTask = new Task({ name, status ,priority  ,project ,users });
+    const { name, status ,priority  ,project ,users,subTask } = req.body;
+    const newTask = new Task({ name, status ,priority  ,project ,users ,subTask });
     await newTask.save();
   
     res.status(201).json(newTask);
@@ -58,13 +59,16 @@ exports.completeTask = async (req, res) => {
 
 
 
-exports.getTodoTasks = async (req, res) => {
-  const userId = req.params.userId;
+exports.getTasks = async (req, res) => {
+  const userId = req.params.id;
   try {
-    const tasks = await Task.find({ userId: userId, status: 'toDo' });
-    res.json(tasks);
+    const user = await User.findById(userId).populate('tasks', 'name status priority subTask');
+    if (!user) {
+      return res.status(404).json({ error: 'user not found' });
+    }
+    res.json({ tasks: user.tasks });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };
 
@@ -89,8 +93,8 @@ exports.getDoneTasks = async (req, res) => {
 
 exports.updateTaskById = async (req, res) => {
   try {
-    const { title, description, status } = req.body;
-    const updatedTask = await Task.findByIdAndUpdate(req.params.id, { title, description, status }, { new: true });
+    const { name, status,subTask } = req.body;
+    const updatedTask = await Task.findByIdAndUpdate(req.params.id, { name, status,subTask }, { new: true });
     if (!updatedTask) {
       return res.status(404).json({ message: 'Task not found' });
     }

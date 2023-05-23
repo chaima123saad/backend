@@ -7,15 +7,15 @@ const fs = require('fs');
 const path= require('path');
 const Team = require('../models/user');
 const cloudinary = require('cloudinary').v2;
+const jwt = require('jsonwebtoken');
 
 exports.createUser = async (req, res) => {
   try {
-    const { email,name, lastName,adress ,numero,genre,team,role, profileImage, tasks } = req.body;
+    const { email, name, lastName, adress, numero, genre, team, role,speciality, birthDate, profileImage, tasks } = req.body;
     const password = User.generatePassword();
-    const newUser = new User({ email,name, lastName,adress ,numero,genre,team, role, profileImage, tasks, password });
+    const newUser = new User({ email, name, lastName, adress, numero, genre, team, role,speciality, birthDate, profileImage, tasks, password });
     sendWelcomeEmail(email, name, password);
     newUser.password = await bcrypt.hash(password, 8);
-    // const token = newUser.generateAuthToken();
     const token = jwt.sign({ userId: newUser._id }, process.env.JWT_SECRET);
     await newUser.save();
     res.status(201).json({ user: newUser, token });
@@ -23,6 +23,7 @@ exports.createUser = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 exports.getAllUsers = async (req, res) => {
   try {
@@ -49,8 +50,8 @@ exports.getUserById = async (req, res) => {
 
 exports.updateUserById = async (req, res) => {
   try {
-    const { firstName, lastName, email, password, role, specialite} = req.body;
-    const updatedUser = await User.findByIdAndUpdate(req.params.id, { firstName, lastName, email, password, role, specialite}, { new: true });
+    const { email,name, lastName,adress ,numero,genre,team,role,speciality, tasks } = req.body;
+    const updatedUser = await User.findByIdAndUpdate(req.params.id, { email,name, lastName,adress ,numero,genre,team,role,speciality, tasks }, { new: true });
     if (!updatedUser) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -84,20 +85,26 @@ exports.updateProfileImage = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
+
     if (user.profileImage && !user.profileImage.includes("https://res.cloudinary.com/dvw7882vz/image/upload/v1681564075/user_avatar_2.jpg")) {
       const public_id = 'user_avatar_2';
-      const result = await cloudinary.uploader.destroy(public_id);
+      await cloudinary.uploader.destroy(public_id);
     }
+
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
     const result = await cloudinary.uploader.upload(req.file.path);
     user.profileImage = result.secure_url;
     await user.save();
+
     res.status(200).json({ message: "Profile image updated successfully", user });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Failed to update profile image" });
   }
 };
-
 exports.deleteProfileImage = async (req, res) => {
   try {
   
