@@ -5,38 +5,28 @@ const subTaskSchema = new mongoose.Schema({
       required: true
     },
     completed:{
-    type: String,
+    type: Boolean,
     required: true,
-    enum: ['yes', 'no'],
-    default: 'no'
+    default: false
     },
     task:{
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'task'
+        ref: 'Task'
      },
     
   }, {
   timestamps: true
   });
 
-  subTaskSchema.pre('remove', async function(next) {
-    try {
-      
-      const task = await mongoose.model('Task').findOne({ subTask: this._id });
-      if (task) {
-        task.subTask.pull(this._id);
-        await task.save();
-      }
-      next();
-    } catch (error) {
-      next(error);
-    }
-  });
+
   
   subTaskSchema.pre('save', async function(next) {
     try {
+      console.log("myid ",this._id);
+
       if (this.task) {
         const task = await mongoose.model('Task').findById(this.task);
+        console.log("****",task);
         if (task) {
           const issubTask = task.subTask.includes(this._id);
           if (!issubTask) {
@@ -51,6 +41,19 @@ const subTaskSchema = new mongoose.Schema({
     }
   });
 
+  subTaskSchema.pre('findOneAndDelete', { document: false, query: true }, async function(next) {
+    try {
+      const subTaskId = this.getQuery()["_id"];
+      const task = await mongoose.model('Task').findOne({ subTask: subTaskId });
+      if (task) {
+        task.subTask.pull(subTaskId);
+        await task.save();
+      }
+      next();
+    } catch (error) {
+      next(error);
+    }
+  });
 
-const subTask = mongoose.model('subTask', subTaskSchema);
-module.exports = subTask;
+const SubTask = mongoose.model('SubTask', subTaskSchema);
+module.exports = SubTask;

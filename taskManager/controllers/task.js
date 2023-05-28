@@ -1,21 +1,25 @@
 const Task = require('../models/task');
 const Project = require('../models/project');
 const User = require('../models/user');
+const Subtask =require('../models/subTask');
 
-//will be deleted in the futur 
 exports.createTask = async (req, res) => {
   try {
+    const { name, status, priority, users, subTask, progress } = req.body;
+    const project = await Project.findOne({ status: 'inProgress' });
+    if (!project) {
+      return res.status(404).json({ message: 'No project found with status "inProgress"' });
+    }
 
-    const { name, status ,priority  ,project ,users,subTask } = req.body;
-    const newTask = new Task({ name, status ,priority  ,project ,users ,subTask });
+    const newTask = new Task({ name, status, priority, project: project._id, users, subTask, progress });
     await newTask.save();
-  
-    res.status(201).json(newTask);
 
+    res.status(201).json(newTask);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 exports.completeTask = async (req, res) => {
   try {
@@ -66,11 +70,18 @@ exports.getTasks = async (req, res) => {
     if (!user) {
       return res.status(404).json({ error: 'user not found' });
     }
+    
+    for (const task of user.tasks) {
+      console.log("task",task);
+      await task.updateProgress();
+    }
+    
     res.json({ tasks: user.tasks });
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }
 };
+
 
 exports.getInProgressTasks = async (req, res) => {
   try {
@@ -106,12 +117,68 @@ exports.updateTaskById = async (req, res) => {
 
 exports.deleteTaskById = async (req, res) => {
   try {
-    const deletedTask = await Task.findByIdAndDelete(req.params.id);
+    const deletedTask = await Task.deleteOne(req.params.id);
     if (!deletedTask) {
       return res.status(404).json({ message: 'Task not found' });
     }
     res.json({ message: 'Task deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+
+exports.progressTaskById = async (req, res) => {
+  const taskId = req.params.id;
+
+  try {
+    const task = await Task.findById(taskId);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    const subtaskIds = task.subTask;
+    if (!subtaskIds || !Array.isArray(subtaskIds) || subtaskIds.length === 0) {
+      return res.status(200).json({ progress: 0 }); // No subtasks or subtasks is not an array, progress is 0%
+    }
+
+    // Retrieve the subtasks by their IDs
+    const subtasks = await Subtask.find({ _id: { $in: subtaskIds } });
+
+    // Filter completed subtasks
+    const completedSubtasks = subtasks.filter((subtask) => subtask.completed === true);
+    const progress = (completedSubtasks.length / subtasks.length) * 100;
+
+    res.status(200).json({ progress });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+exports.getTasksByProjectAndUser = async (req, res) => {
+  try {
+    const projectId = req.params.projectId;
+    const userId = req.params.userId;
+
+    const project = await Project.findById(projectId);
+    const user = await User.findById(userId);
+
+    if (!project || !user) {
+      throw new Error("Project or user not found");
+    }
+
+    const tasks = await Task.find({
+      project: projectId,
+      users: userId,
+    });
+    for (const task of tasks) {
+      console.log("task",tasks);
+      await task.updateProgress();
+    }
+    res.json(tasks);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "An error occurred while fetching tasks" });
   }
 };

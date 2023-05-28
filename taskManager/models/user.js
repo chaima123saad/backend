@@ -77,7 +77,6 @@ timestamps: true
 
 userSchema.pre('remove', async function(next) {
   try {
-    
     const team = await mongoose.model('Team').findOne({ members: this._id });
     if (team) {
       team.members.pull(this._id);

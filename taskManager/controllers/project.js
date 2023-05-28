@@ -2,9 +2,9 @@ const Project = require('../models/project');
 const Task = require('../models/task');
 
 exports.createProject = async (req, res) => {
-  const { name,description,team,status,priority,clientName,budge,tasks } = req.body;
+  const { name,description,team,status,priority,clientName,budge,tasks,progress } = req.body;
   try {
-    const newProject = new Project({ name,description,team,status,priority,clientName,budge,tasks });
+    const newProject = new Project({ name,description,team,status,priority,clientName,budge,tasks,progress });
     await newProject.save();
     res.status(201).json({ newProject });
   } catch (error) {
@@ -15,6 +15,12 @@ exports.createProject = async (req, res) => {
 exports.getProjects = async (req, res) => {
   try {
     const projects = await Project.find();
+
+    for (const project of projects) {
+      console.log("******project:", project);
+      await project.updateProgress();
+    }
+
     res.json(projects);
   } catch (error) {
     res.status(500).json({ error: 'Server error' });

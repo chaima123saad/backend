@@ -18,31 +18,53 @@ const taskSchema = new mongoose.Schema({
       
     subTask: [{
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'subTask'
+        ref: 'SubTask'
      }],
 
     project: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'project'
+      ref: 'Project'
     },
 
     users:[{
       type: mongoose.Schema.Types.ObjectId,
       required: true,
-      ref: 'user'
-    }]
+      ref: 'User'
+    }],
+    progress:{
+      type: Number,
+    }
 
   }, {
   timestamps: true // Adds createdAt and updatedAt fields to the schema
   });
 
-  taskSchema.pre('remove', async function(next) {
+  const SubTask = require('../models/subTask');
+
+  taskSchema.methods.updateProgress = async function () {
+    const subtaskCount = this.subTask.length;
+    console.log(subtaskCount);
+    if (subtaskCount === 0) {
+      this.progress = 0;
+    } else {
+      const completedSubtaskCount = await SubTask.countDocuments({ _id: { $in: this.subTask }, completed: true });
+      console.log("completedSubtaskCount",completedSubtaskCount);
+      const progress = (completedSubtaskCount / subtaskCount) * 100;
+      console.log(progress);
+      this.progress = Math.floor(progress);
+    }
+    await this.save();
+  };
+  
+  
+
+  taskSchema.pre('deleteOne', { document: false, query: true }, async function(next) {
     try {
-      
-      const users = await mongoose.model('User').findOne({ tasks: this._id });
-      if (users) {
-        users.tasks.pull(this._id);
-        await users.save();
+      const taskId = this.getQuery()["_id"];
+      const user = await mongoose.model('User').findOne({ tasks: taskId });
+      if (user) {
+        user.tasks.pull(taskId);
+        await user.save();
       }
       next();
     } catch (error) {
@@ -68,16 +90,23 @@ const taskSchema = new mongoose.Schema({
     }
   });
 
-
-  // Add a virtual property to the schema to get the task's duration in seconds
-taskSchema.virtual('durationInSeconds').get(function() {
-  const diffInMs = Math.abs(new Date() - this.createdAt);
-  return Math.floor(diffInMs / 1000);
-});
-
-// Set the toJSON method to include the durationInSeconds virtual property
-taskSchema.set('toJSON', { virtuals: true });
-
+  taskSchema.pre('save', async function(next) {
+    try {
+      if (this.project) {
+        const project = await mongoose.model('Project').findById(this.project);
+        if (project) {
+          const isProject = project.tasks.includes(this._id);
+          if (!isProject) {
+            project.tasks.push(this._id);
+            await project.save();
+          }
+        }
+      }
+      next();
+    } catch (error) {
+      next(error);
+    }
+  });
 
 const Task = mongoose.model('Task', taskSchema);
 module.exports = Task;
