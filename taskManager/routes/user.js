@@ -5,7 +5,6 @@ const multer = require('multer');
 const User = require('../models/user');
 const path=require('path');
 
-
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
       cb(null, 'public/images');
@@ -32,14 +31,14 @@ const upload = multer({
     }
 })
 
-router.put('/updateImage/:id', userController.updateProfileImage); 
-router.delete('/:id',userController.deleteProfileImage); 
-
-router.get('/',userController.getAllUsers);
-router.get('/:id',userController.getUserById);
-router.post('/addUser',upload.none(),userController.createUser);
-router.put('/updateUser/:id',userController.updateUserById);
-router.delete('/deleteUser/:id',userController.deleteUser);
+router.put('/:id', upload.single('profileImage'), userController.updateProfileImage); 
+router.delete('/:id', userController.deleteProfileImage); 
+router.get('/', userController.getAllUsers);
+router.get('/:id', userController.getUserById);
+router.post('/addUser', upload.none(), userController.createUser);
+router.put('/updateUser/:id', userController.updateUserById);
+router.delete('/deleteUser/:id', userController.deleteUser);
 
 module.exports = router;
+
  

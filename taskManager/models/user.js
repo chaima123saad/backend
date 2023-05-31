@@ -26,6 +26,10 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Team'
   },
+  progress:{
+    type:Number,
+  }
+  ,
   genre:{
     type: String,
     required: true,
@@ -74,6 +78,36 @@ tasks:[{
 {
 timestamps: true
 });
+
+
+userSchema.methods.updateProg = async function () {
+  const taskCount = this.tasks.length;
+
+  if (taskCount === 0) {
+    this.progress = 0;
+  } else {
+    let totalProgress = 0;
+    console.log("*********HelO********");
+
+    for (const taskId of this.tasks) {
+      const task = await Task.findById(taskId);
+      if (task) {
+        totalProgress += task.progress;
+      }
+    }
+    console.log("totalProgress : ",totalProgress);
+
+    const averageProgress = totalProgress / taskCount;
+    console.log("averageProgress : ",averageProgress);
+    this.progress = Math.floor(averageProgress);
+  }
+
+  await this.save();
+};
+
+
+
+
 
 userSchema.pre('remove', async function(next) {
   try {

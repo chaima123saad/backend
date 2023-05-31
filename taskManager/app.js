@@ -95,27 +95,7 @@ const subtaskRoutes= require('./routes/subTask');
 const statisticRoutes =require('./routes/statistic');
 const chatGpt=require('./routes/chatGpt');
 const login=require('./routes/login');
-
-// Define routes for fetching task analytics data
-app.get("/api/task-analytics", (req, res) => {
-  // Fetch the necessary data from your database or other data source
-  const completedTasks = 25;
-  const incompleteTasks = 10;
-  const completedAvgTime = 5.2;
-  const incompleteAvgTime = 7.8;
-  const teamTasksCompleted = [12, 18, 20, 15, 10];
-  const teamTasksIncomplete = [3, 1, 4, 2, 0];
-
-  // Return the data as a JSON response
-  res.json({
-    completedTasks,
-    incompleteTasks,
-    completedAvgTime,
-    incompleteAvgTime,
-    teamTasksCompleted,
-    teamTasksIncomplete,
-  });
-});
+const archiveRoutes = require('./routes/archive');
 
 
 
@@ -155,6 +135,7 @@ app.use('/subtasks',subtaskRoutes);
 app.use('/statistics',statisticRoutes);
 app.use('/login',login);
 app.use('/chatGpt',chatGpt);
+app.use('/archives', archiveRoutes);
 
 const port = 2000;
 server.listen(port, () => {

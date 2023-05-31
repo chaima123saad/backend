@@ -1,5 +1,8 @@
 const Team = require('../models/team');
 const User = require('../models/user');
+const Archive = require('../models/archive');
+const Project = require('../models/project');
+
 exports.createTeam = async (req, res) => {
   try {
     const { name, members,owner,projects } = req.body;
@@ -18,7 +21,6 @@ exports.getTeamById = async (req, res) => {
       if (!team) {
         return res.status(404).json({ message: 'Team not found' });
       }
-
       res.status(200).json(team);
     })
     .catch((error) => {
@@ -51,17 +53,40 @@ exports.updateTeamById = async (req, res) => {
 };
 
 
+
+
 exports.deleteTeamById = async (req, res) => {
   try {
-    const deletedTeam = await Team.findByIdAndDelete(req.params.id);
-    if (!deletedTeam) {
+    const team = await Team.findById(req.params.id).populate({
+      path: 'members',
+      match: { role: 'owner' },
+    });
+
+    if (!team) {
       return res.status(404).json({ message: 'Team not found' });
     }
-    res.json({ message: 'Team deleted successfully' });
+
+    const owner = team.members.find(member => member.role === 'owner');
+const archivedTeam = {
+  name: team.name,
+  ownerName: owner ? owner.name : null,
+  ownerLastName: owner ? owner.lastName : null,
+  deletedAt: new Date(),
+};
+
+
+    await Archive.updateOne({}, { $push: { deletedTeams: archivedTeam } });
+
+    await Team.findByIdAndRemove(req.params.id);
+
+    res.status(200).json({ message: 'Team deleted', team: archivedTeam });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+
 
 exports.getMembers = async (req, res) => {
   const teamId = req.params.teamId;
@@ -75,6 +100,7 @@ exports.getMembers = async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 };
+
 exports.teamMembers = async  (req, res) => {
   const teamId = req.params.teamId;
 
@@ -183,63 +209,53 @@ exports.updateTeamOwner = async (req, res) => {
 exports.updateTeamMember = async (req, res) => {
   const { teamId, memberId } = req.params;
   const { role } = req.body;
-
   try {
-    // Get the team from the database
     const team = await Team.findById(teamId);
 
     if (!team) {
       return res.status(404).json({ error: "Team not found" });
     }
-
-    // Find the member ID in the team's members array
     const memberIndex = team.members.findIndex((m) => m.toString() === memberId);
-
     if (memberIndex === -1) {
       return res.status(404).json({ error: "Member not found" });
     }
-
-    // Find the user/member in the database
-    const user = await User.findById(memberId);
+   const user = await User.findById(memberId);
 
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
-
-    // If the role is changing to owner
     if (role === "owner") {
-      // Find the current owner in the team
       const currentOwnerIndex = team.members.findIndex((m) => m.role === "owner");
-
       if (currentOwnerIndex !== -1) {
-        // Change the role of the current owner to employee
         team.members[currentOwnerIndex].role = "employee";
-
-        // Find the current owner's user in the database
         const currentOwnerUser = await User.findOne({ teamId, role: "owner" });
-
         if (currentOwnerUser) {
-          // Change the role of the current owner's user to employee
           currentOwnerUser.role = "employee";
           await currentOwnerUser.save();
         }
       }
     }
-
-    // Update the member's role
     team.members[memberIndex].role = role;
-
-    // Update the user's role
     user.role = role;
-
-    // Save the updated team and user
     await team.save();
     await user.save();
-
     res.json({ message: "Member role updated successfully" });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+exports.teamProjects = async (req, res) => {
+  try {
+    const { teamId } = req.params;
+    console.log("teamId",teamId);
+    const projects = await Project.find({team: teamId });
+
+    res.json({ projects });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server Error' });
   }
 };
 

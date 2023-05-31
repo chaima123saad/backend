@@ -15,5 +15,5 @@ router.put('/:teamId/updateTeamOwner', teamController.updateTeamOwner );
 router.get('/:teamId/members',teamController.getMembers);
 //router.get('/:teamId/members',teamController.teamMembers);
 router.put("/:teamId/members/:memberId", teamController.updateTeamMember);
-
+router.get('/:teamId/projects',teamController.teamProjects);
 module.exports = router;

@@ -1,10 +1,12 @@
 const Project = require('../models/project');
 const Task = require('../models/task');
+const User = require('../models/user');
+const Archive = require('../models/archive');
 
 exports.createProject = async (req, res) => {
-  const { name,description,team,status,priority,clientName,budge,tasks,progress } = req.body;
+  const { name,description,team,status,priority,clientName,budget,tasks,progress,limiteDate } = req.body;
   try {
-    const newProject = new Project({ name,description,team,status,priority,clientName,budge,tasks,progress });
+    const newProject = new Project({ name,description,team,status,priority,clientName,budget,tasks,progress,limiteDate });
     await newProject.save();
     res.status(201).json({ newProject });
   } catch (error) {
@@ -68,26 +70,66 @@ exports.getCompletedProjectsByUsers = async (req, res) => {
 
 exports.updateProject = async (req, res) => {
   try {
-    const { name,description,team,clientName,budge,tasks } = req.body;
-    const updatedProject = await Project.findByIdAndUpdate(req.params.id, { name,description,team,clientName,budge,tasks }, { new: true });
+    const { name, description, team, clientName, budget, tasks,status } = req.body;
+    const updatedProject = await Project.findOneAndUpdate(
+      { _id: req.params.id },
+      { name, description, team, clientName, budget, tasks,status },
+      { new: true }
+    );
+
     if (!updatedProject) {
       return res.status(404).json({ message: 'Project not found' });
     }
+
     res.json(updatedProject);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+
+
+
 exports.deleteProject = async (req, res) => {
   try {
-    const project =await Project.findById(req.params.id);
-    await Project.findByIdAndRemove(project);
+    const project = await Project.findById(req.params.id);
+
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
+    const userId = project.members;
+
+    const archivedProject = {
+      name: project.name,
+      description: project.description,
+      priority: project.priority,
+      clientName: project.clientName,
+      budget: project.budget,
+      limiteDate: project.limiteDate,
+      deletedAt: new Date(),
+
+    };
+
+    await Archive.updateOne({}, { $push: { deletedProjects: archivedProject } });
+
+    await Project.deleteOne({ _id: req.params.id });
+
+    const user = await User.findById(userId);
+
+    if (user && user.team === req.params.id) {
+      user.team = null;
+      await user.save();
+    }
+
     res.status(200).json({ message: 'Project deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+
 
 exports.filterProjects = async (req, res) => {
 

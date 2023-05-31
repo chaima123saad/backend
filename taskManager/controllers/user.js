@@ -8,12 +8,13 @@ const path= require('path');
 const Team = require('../models/user');
 const cloudinary = require('cloudinary').v2;
 const jwt = require('jsonwebtoken');
+const Archive = require('../models/archive');
 
 exports.createUser = async (req, res) => {
   try {
-    const { email, name, lastName, adress, numero, genre, team, role,speciality, birthDate, profileImage, tasks } = req.body;
+    const { email, name, lastName, adress, numero, genre, team, role,speciality, birthDate, profileImage, tasks,progress } = req.body;
     const password = User.generatePassword();
-    const newUser = new User({ email, name, lastName, adress, numero, genre, team, role,speciality, birthDate, profileImage, tasks, password });
+    const newUser = new User({ email, name, lastName, adress, numero, genre, team, role,speciality, birthDate, profileImage, tasks, password,progress });
     sendWelcomeEmail(email, name, password);
     newUser.password = await bcrypt.hash(password, 8);
     const token = jwt.sign({ userId: newUser._id }, process.env.JWT_SECRET);
@@ -41,12 +42,12 @@ exports.getUserById = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
+    await user.updateProg();
     res.json(user);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
 
 exports.updateUserById = async (req, res) => {
   try {
@@ -61,11 +62,34 @@ exports.updateUserById = async (req, res) => {
   }
 };
 
+
 exports.deleteUser = async (req, res) => {
   try {
-    const user =await User.findById(req.params.id);
-    await User.findByIdAndRemove(user);
-    res.status(200).json({ message: 'User deleted', user });
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const archivedUser = {
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      lastName:user.lastName,
+      speciality: user.speciality,
+      genre: user.genre,
+      adress:user.adress,
+      numero:user.numero,
+      birthDate:user.birthDate,
+      deletedAt: new Date(),
+
+    };
+
+    await Archive.updateOne({}, { $push: { deletedUsers: archivedUser } });
+
+    await User.findByIdAndRemove(req.params.id);
+
+    res.status(200).json({ message: 'User deleted', user: archivedUser });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

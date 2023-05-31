@@ -44,33 +44,77 @@ const projectSchema = new mongoose.Schema(
     ],
     progress: {
       type: Number
-    }
+    },
+    limiteDate: {
+      type: Date  },
   },
   {
     timestamps: true
   }
 );
+projectSchema.pre('save', async function (next) {
+  if (this.isNew && this.team) {
+    await mongoose.models.Team.updateOne(
+      { _id: this.team },
+      { $push: { projects: this._id } }
+    );
+  }
+  next();
+});
+
+projectSchema.pre('findOneAndUpdate', async function (next) {
+  if (this._update.team) {
+    const teamId = this._update.team;
+
+    try {
+      const team = await mongoose.models.Team.findById(teamId);
+
+      if (team) {
+        await team.updateOne({ $addToSet: { projects: this._conditions._id } });
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  next();
+});
+
+
+
+
+projectSchema.pre('deleteOne', { document: false, query: true }, async function(next) {
+  try {
+
+    const projectId = this.getQuery()["_id"];
+    const team = await mongoose.model('Team').findOne({ projects: projectId });
+    if (team) {
+      team.projects.pull(projectId);
+      await team.save();
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
 projectSchema.methods.updateProgress = async function () {
-  console.log("helloooooooooooooooooooooo");
   const taskCount = this.tasks.length;
   console.log(taskCount);
 
   if (taskCount === 0) {
     this.progress = 0;
-    console.log("freeeeeeeeeeeeeeeeeeeeeeeee");
   } else {
-    console.log("treeeeeeeeeeeeeeeeeeeeeeeee");
 
     const completedTaskCount = await Task.countDocuments({ _id: { $in: this.tasks }, status: "completed" });
-    console.log("completedTaskCount", completedTaskCount);
     const progress = (completedTaskCount / taskCount) * 100;
-    console.log(progress);
     this.progress = Math.floor(progress);
   }
 
   await this.save();
 };
+
+
 
 const Project = mongoose.model('Project', projectSchema);
 module.exports = Project;
