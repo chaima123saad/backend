@@ -2,9 +2,11 @@ const express = require('express');
 const router = express.Router();
 const { Configuration, OpenAIApi } = require('openai');
 
-router.get('/task-list', async (req, res) => {
+router.get('/task-list/:projectName', async (req, res) => {
+  const { projectName } = req.params;
+
   const configuration = new Configuration({
-    apiKey: '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',
+    apiKey: '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',
   });
   const openai = new OpenAIApi(configuration);
 
@@ -18,7 +20,7 @@ router.get('/task-list', async (req, res) => {
         },
         {
           role: 'user',
-          content: 'give me a task list of create logo project',
+          content: `give me a task list of ${projectName} project`,
         },
       ],
     });
@@ -41,10 +43,5 @@ router.get('/task-list', async (req, res) => {
 });
 
 module.exports = router;
-
-
- 
-
-
 
 
